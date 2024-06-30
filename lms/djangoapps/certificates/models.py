@@ -24,6 +24,7 @@ from simple_history.models import HistoricalRecords
 
 from common.djangoapps.student import models_api as student_api
 from common.djangoapps.student.models import CourseEnrollment
+from common.djangoapps.util.query import use_read_replica_if_available
 from common.djangoapps.util.milestones_helpers import fulfill_course_milestone, is_prerequisite_courses_enabled
 from lms.djangoapps.certificates.data import CertificateStatuses
 from lms.djangoapps.instructor_task.models import InstructorTask
@@ -87,14 +88,16 @@ class CertificateAllowlist(TimeStampedModel):
         }, {...}, ...]
 
         """
-        allowlist = cls.objects.filter(course_id=course_id, allowlist=True)
+        allowlist = use_read_replica_if_available(cls.objects.filter(course_id=course_id, allowlist=True))
         if student:
             allowlist = allowlist.filter(user=student)
         result = []
-        generated_certificates = GeneratedCertificate.eligible_certificates.filter(
-            course_id=course_id,
-            user__in=[allowlist_item.user for allowlist_item in allowlist],
-            status=CertificateStatuses.downloadable
+        generated_certificates = use_read_replica_if_available(
+            GeneratedCertificate.eligible_certificates.filter(
+                course_id=course_id,
+                user__in=[allowlist_item.user for allowlist_item in allowlist],
+                status=CertificateStatuses.downloadable
+            )        
         )
         generated_certificates = {
             certificate['user']: certificate['created_date']
@@ -294,7 +297,7 @@ class GeneratedCertificate(models.Model):
         query = cls.objects
 
         if course_key:
-            query = query.filter(course_id=course_key)
+            query = use_read_replica_if_available(query.filter(course_id=course_key))
 
         if flat:
             return query.values_list('status', flat=True).distinct()

@@ -36,7 +36,9 @@ from simple_history.models import HistoricalRecords
 from common.djangoapps.course_modes.models import CourseMode, get_cosmetic_verified_display_price
 from common.djangoapps.student.signals import ENROLL_STATUS_CHANGE, ENROLLMENT_TRACK_UPDATED, UNENROLL_DONE
 from common.djangoapps.track import contexts, segment
-from common.djangoapps.util.query import use_read_replica_if_available
+
+from common.djangoapps.util.query import read_replica_or_default, use_read_replica_if_available
+
 from lms.djangoapps.certificates.data import CertificateStatuses
 from lms.djangoapps.courseware.models import (
     CourseDynamicUpgradeDeadlineConfiguration,
@@ -142,11 +144,11 @@ class CourseEnrollmentManager(models.Manager):
         """
         max_enrollments = settings.FEATURES.get("MAX_ENROLLMENT_INSTR_BUTTONS")
 
-        enrollment_number = super().get_queryset().filter(
+        enrollment_number = use_read_replica_if_available(super().get_queryset().filter(
             course_id=course_id,
             is_active=1
-        )[:max_enrollments + 1].count()
-
+        ))[:max_enrollments + 1].count()
+        
         return enrollment_number <= max_enrollments
 
     def num_enrolled_in_exclude_admins(self, course_id):
@@ -171,10 +173,10 @@ class CourseEnrollmentManager(models.Manager):
         admins = CourseInstructorRole(course_locator).users_with_role()
         coaches = CourseCcxCoachRole(course_locator).users_with_role()
 
-        return super().get_queryset().filter(
+        return use_read_replica_if_available(super().get_queryset().filter(
             course_id=course_id,
             is_active=1,
-        ).exclude(user__in=staff).exclude(user__in=admins).exclude(user__in=coaches).count()
+        ).exclude(user__in=staff).exclude(user__in=admins).exclude(user__in=coaches)).count()
 
     def is_course_full(self, course):
         """
@@ -206,8 +208,7 @@ class CourseEnrollmentManager(models.Manager):
             filter_kwargs['courseenrollment__is_active'] = True
         if verified_only:
             filter_kwargs['courseenrollment__mode'] = CourseMode.VERIFIED
-        return User.objects.filter(**filter_kwargs)
-
+        return use_read_replica_if_available(User.objects.filter(**filter_kwargs))
     def enrollment_counts(self, course_id):
         """
         Returns a dictionary that stores the total enrollment count for a course, as well as the
@@ -889,7 +890,7 @@ class CourseEnrollment(models.Model):
 
     @classmethod
     def enrollments_for_user(cls, user):
-        return cls.objects.filter(user=user, is_active=1).select_related('user')
+        return use_read_replica_if_available(cls.objects.filter(user=user, is_active=1).select_related('user'))
 
     @classmethod
     def enrollments_for_user_with_overviews_preload(cls, user, courses_limit=None):  # pylint: disable=invalid-name
@@ -907,7 +908,9 @@ class CourseEnrollment(models.Model):
         The name of this method is long, but was the end result of hashing out a
         number of alternatives, so pylint can stuff it (disable=invalid-name)
         """
-        enrollments = cls.enrollments_for_user(user).select_related('schedule', 'course', 'course__image_set')
+        enrollments = use_read_replica_if_available(
+            cls.enrollments_for_user(user).select_related('schedule', 'course', 'course__image_set')
+        )
 
         if courses_limit:
             return enrollments.order_by('-created')[:courses_limit]
@@ -1573,7 +1576,10 @@ class CourseEnrollmentAllowed(DeletableByUserValue, models.Model):
 
         `course_id` identifies the course for which to compute the QuerySet.
         """
-        return CourseEnrollmentAllowed.objects.filter(course_id=course_id, user__isnull=True)
+        enrolled = CourseEnrollment.objects.users_enrolled_in(course_id=course_id).values_list('email', flat=True)
+        return use_read_replica_if_available(
+            CourseEnrollmentAllowed.objects.filter(course_id=course_id).exclude(email__in=enrolled)
+        )
 
 
 class CourseEnrollmentAttribute(models.Model):

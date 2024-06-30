@@ -9,6 +9,7 @@ from django.contrib.auth.models import User  # lint-amnesty, pylint: disable=imp
 from django.db.models import Prefetch
 
 from common.djangoapps.student.models import CourseEnrollment
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.program_enrollments.models import ProgramCourseEnrollment
 from lms.djangoapps.teams.api import (
     ORGANIZATION_PROTECTED_MODES,
@@ -242,7 +243,8 @@ class TeamMembershipImportManager:
         Caches existing course teams by (team_name, topic_id)
         and existing membership counts by (topic_id, team_name)
         """
-        for team in CourseTeam.objects.filter(course_id=self.course.id).prefetch_related('users'):
+        teams = use_read_replica_if_available(CourseTeam.objects.filter(course_id=self.course.id).prefetch_related('users'))
+        for team in teams:
             self.existing_course_teams[(team.name, team.topic_id)] = team
             self.user_count_by_team[(team.topic_id, team.name)] = team.users.count()
 

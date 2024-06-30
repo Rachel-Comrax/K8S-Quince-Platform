@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from opaque_keys.edx.keys import CourseKey
+from common.djangoapps.util.query import use_read_replica_if_available
 
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 
@@ -95,7 +96,7 @@ class CourseIdFilter(admin.SimpleListFilter):
 
     def lookups(self, request, model_admin):
         return (
-            (overview.id, str(overview.id)) for overview in CourseOverview.objects.all().order_by('id')
+            (overview.id, str(overview.id)) for overview in use_read_replica_if_available(CourseOverview.objects.all().order_by('id'))
         )
 
     def queryset(self, request, queryset):

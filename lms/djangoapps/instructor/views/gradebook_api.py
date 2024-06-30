@@ -13,6 +13,7 @@ from django.views.decorators.cache import cache_control
 from opaque_keys.edx.keys import CourseKey
 
 from common.djangoapps.edxmako.shortcuts import render_to_response
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.courseware.courses import get_course_with_access
 from lms.djangoapps.grades.api import CourseGradeFactory
 from lms.djangoapps.instructor.views.api import require_course_permission
@@ -73,10 +74,10 @@ def get_grade_book_page(request, course, course_key):
     """
     # Unsanitized offset
     current_offset = request.GET.get('offset', 0)
-    enrolled_students = User.objects.filter(
+    enrolled_students = use_read_replica_if_available(User.objects.filter(
         courseenrollment__course_id=course_key,
         courseenrollment__is_active=1
-    ).order_by('username').select_related("profile")
+    ).order_by('username').select_related("profile"))
 
     total_students = enrolled_students.count()
     page = calculate_page_info(current_offset, total_students)

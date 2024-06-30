@@ -23,6 +23,17 @@ def get_course_in_cache(course_key):
     return get_block_structure_manager(course_key).get_collected()
 
 
+def get_course_from_modulestore(course_key):
+    """
+    A higher order function implemented on top of the
+    block_structure._update_collected function that returns the block
+    structure from modulestore.
+    Returns:
+        BlockStructureBlockData - The collected block structure,
+            starting at root_block_usage_key.
+    """
+    return get_block_structure_manager(course_key)._update_collected()
+
 def update_course_in_cache(course_key):
     """
     A higher order function implemented on top of the

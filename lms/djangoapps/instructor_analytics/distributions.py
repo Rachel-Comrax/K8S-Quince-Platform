@@ -25,6 +25,7 @@ The distribution in a course for gender might look like:
 from django.db.models import Count
 
 from common.djangoapps.student.models import CourseEnrollment, UserProfile
+from common.djangoapps.util.query import use_read_replica_if_available
 
 # choices with a restricted domain, e.g. level_of_education
 _EASY_CHOICE_FEATURES = ('gender', 'level_of_education')
@@ -122,12 +123,11 @@ def profile_distribution(course_id, feature):
 
         def get_count(feature, value):
             """ Get the count of enrolled students matching the feature value. """
-            return CourseEnrollment.objects.filter(
+            return use_read_replica_if_available(CourseEnrollment.objects.filter(
                 course_id=course_id,
                 is_active=True,
                 **get_filter(feature, value)
-            ).count()
-
+            )).count()
         distribution = {}
         for (short, full) in choices:  # lint-amnesty, pylint: disable=unused-variable
             # handle no data case

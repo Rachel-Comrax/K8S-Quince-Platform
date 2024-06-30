@@ -22,6 +22,7 @@ from six.moves import zip_longest
 from common.djangoapps.course_modes.models import CourseMode
 from common.djangoapps.student.models import CourseEnrollment
 from common.djangoapps.student.roles import BulkRoleCache
+from common.djangoapps.util.query import read_replica_or_default, use_read_replica_if_available
 from lms.djangoapps.certificates import api as certs_api
 from lms.djangoapps.certificates.models import GeneratedCertificate
 from lms.djangoapps.course_blocks.api import get_course_blocks
@@ -38,7 +39,9 @@ from lms.djangoapps.instructor_task.config.waffle import (
 )
 from lms.djangoapps.teams.models import CourseTeamMembership
 from lms.djangoapps.verify_student.services import IDVerificationService
-from openedx.core.djangoapps.content.block_structure.api import get_course_in_cache
+
+from openedx.core.djangoapps.content.block_structure.api import get_course_from_modulestore
+
 from openedx.core.djangoapps.course_groups.cohorts import bulk_cache_cohorts, get_cohort, is_course_cohorted
 from openedx.core.djangoapps.user_api.course_tag.api import BulkCourseTags
 from openedx.core.lib.cache_utils import get_cache
@@ -105,8 +108,8 @@ class _CourseGradeReportContext:
 
     @lazy
     def course_structure(self):
-        return get_course_in_cache(self.course_id)
-
+        return get_course_from_modulestore(self.course_id)
+    
     @lazy
     def course_experiments(self):
         return get_split_user_partitions(self.course.user_partitions)
@@ -224,8 +227,8 @@ class _ProblemGradeReportContext:
 
     @lazy
     def course_structure(self):
-        return get_course_in_cache(self.course_id)
-
+        return get_course_from_modulestore(self.course_id)
+        
     def update_status(self, message):
         """
         Updates the status on the celery task to the given message.
@@ -242,7 +245,9 @@ class _CertificateBulkContext:
         self.certificates_by_user = {
             certificate.user.id: certificate
             for certificate in
-            GeneratedCertificate.objects.filter(course_id=context.course_id, user__in=users)
+            use_read_replica_if_available(
+                GeneratedCertificate.objects.filter(course_id=context.course_id, user__in=users)
+            )
         }
 
 
@@ -422,11 +427,12 @@ class GradeReportBase:
         """
         Returns count of number of learner enrolled in course.
         """
-        return CourseEnrollment.objects.users_enrolled_in(
+        return use_read_replica_if_available(
+            CourseEnrollment.objects.users_enrolled_in(
             course_id=self.context.course_id,
             include_inactive=True,
             verified_only=self.context.report_for_verified_only,
-        ).count()
+        )).count()
 
     def log_task_info(self, message):
         """

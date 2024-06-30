@@ -35,6 +35,7 @@ from xblock.core import XBlockAside
 from xblock.exceptions import InvalidScopeError, KeyValueMultiSaveError
 from xblock.fields import Scope, UserScope
 from xblock.runtime import KeyValueStore
+from common.djangoapps.util.query import use_read_replica_if_available
 
 from lms.djangoapps.courseware.user_state_client import DjangoXBlockUserStateClient
 from xmodule.modulestore.django import modulestore  # lint-amnesty, pylint: disable=wrong-import-order
@@ -929,10 +930,12 @@ class ScoresClient:
 
     def fetch_scores(self, locations):
         """Grab score information."""
-        scores_qset = StudentModule.objects.filter(
-            student_id=self.user_id,
-            course_id=self.course_key,
-            module_state_key__in=set(locations),
+        scores_qset = use_read_replica_if_available(
+            StudentModule.objects.filter(
+                student_id=self.user_id,
+                course_id=self.course_key,
+                module_state_key__in=set(locations),
+            )
         )
         # Locations in StudentModule don't necessarily have course key info
         # attached to them (since old mongo identifiers don't include runs).

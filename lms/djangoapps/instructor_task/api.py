@@ -15,6 +15,7 @@ import pytz
 from celery.states import READY_STATES
 
 from common.djangoapps.util import milestones_helpers
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.bulk_email.api import get_course_email
 from lms.djangoapps.certificates.models import CertificateGenerationHistory
 from lms.djangoapps.instructor_task.api_helper import (
@@ -68,7 +69,7 @@ def get_running_instructor_tasks(course_id):
 
     Used to generate a list of tasks to display on the instructor dashboard.
     """
-    instructor_tasks = InstructorTask.objects.filter(course_id=course_id)
+    instructor_tasks = use_read_replica_if_available(InstructorTask.objects.filter(course_id=course_id))
     # exclude states that are "ready" (i.e. not "running", e.g. failure, success, revoked):
     for state in READY_STATES:
         instructor_tasks = instructor_tasks.exclude(task_state=state)
@@ -80,7 +81,7 @@ def get_instructor_task_history(course_id, usage_key=None, student=None, task_ty
     Returns a query of InstructorTask objects of historical tasks for a given course,
     that optionally match a particular problem, a student, and/or a task type.
     """
-    instructor_tasks = InstructorTask.objects.filter(course_id=course_id)
+    instructor_tasks = use_read_replica_if_available(InstructorTask.objects.filter(course_id=course_id))
     if usage_key is not None or student is not None:
         _, task_key = encode_problem_and_student_input(usage_key, student)
         instructor_tasks = instructor_tasks.filter(task_key=task_key)
@@ -95,7 +96,7 @@ def get_entrance_exam_instructor_task_history(course_id, usage_key=None, student
     Returns a query of InstructorTask objects of historical tasks for a given course,
     that optionally match an entrance exam and student if present.
     """
-    instructor_tasks = InstructorTask.objects.filter(course_id=course_id)
+    instructor_tasks = use_read_replica_if_available(InstructorTask.objects.filter(course_id=course_id))
     if usage_key is not None or student is not None:
         _, task_key = encode_entrance_exam_and_student_input(usage_key, student)
         instructor_tasks = instructor_tasks.filter(task_key=task_key)

@@ -13,6 +13,7 @@ Note: The access control logic in this file does NOT check for enrollment in
 
 
 import logging
+from django.db.models import Q
 
 from django.conf import settings  # pylint: disable=unused-import
 from django.contrib.auth.models import AnonymousUser
@@ -85,8 +86,8 @@ def has_ccx_coach_role(user, course_key):
 
         if role.has_user(user):
             list_ccx = CustomCourseForEdX.objects.filter(
-                course_id=course_key.to_course_locator(),
-                coach=user
+                Q(coach=user) | Q(coach2=user),
+                course_id=course_key.to_course_locator()
             )
             if list_ccx.exists():
                 coach_ccx = list_ccx[0]

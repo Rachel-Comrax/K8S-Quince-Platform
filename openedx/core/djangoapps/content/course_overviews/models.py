@@ -22,13 +22,14 @@ from django.utils.functional import cached_property
 from model_utils.models import TimeStampedModel
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 from simple_history.models import HistoricalRecords
+from common.djangoapps.static_replace.models import AssetBaseUrlConfig
+from common.djangoapps.util.query import read_replica_or_default, use_read_replica_if_available
 
 from lms.djangoapps.courseware.model_data import FieldDataCache
 from openedx.core.djangoapps.catalog.models import CatalogIntegration
 from openedx.core.djangoapps.lang_pref.api import get_closest_released_language
 from openedx.core.djangoapps.models.course_details import CourseDetails
 from openedx.core.lib.cache_utils import request_cached, RequestCache
-from common.djangoapps.static_replace.models import AssetBaseUrlConfig
 from xmodule import block_metadata_utils, course_metadata_utils  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.course_block import DEFAULT_START_DATE, CourseBlock  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.error_block import ErrorBlock  # lint-amnesty, pylint: disable=wrong-import-order
@@ -378,13 +379,13 @@ class CourseOverview(TimeStampedModel):
 
         Returns: bool
         """
-        if cls.objects.filter(id=course_id).exists():
+        if use_read_replica_if_available(cls.objects.filter(id=course_id)).exists():
             return True
         return modulestore().has_course(course_id)
 
     @classmethod
     @request_cached('course_overview')
-    def get_from_id(cls, course_id):
+    def get_from_id(cls, course_id, use_replica=True):
         """
         Load a CourseOverview object for a given course ID.
 
@@ -395,6 +396,7 @@ class CourseOverview(TimeStampedModel):
 
         Arguments:
             course_id (CourseKey): the ID of the course overview to be loaded.
+            use_replica (Boolean): use replica DB or not.
 
         Returns:
             CourseOverview: overview of the requested course.
@@ -406,7 +408,12 @@ class CourseOverview(TimeStampedModel):
                 course from the module store.
         """
         try:
-            course_overview = cls.objects.select_related('image_set').get(id=course_id)
+            if use_replica:
+                course_overview = cls.objects.using(read_replica_or_default()).select_related('image_set').get(
+                    id=course_id
+                )
+            else:
+                course_overview = cls.objects.select_related('image_set').get(id=course_id)
             if course_overview.version < cls.VERSION:
                 # Reload the overview from the modulestore to update the version
                 course_overview = cls.load_from_module_store(course_id)
@@ -417,6 +424,7 @@ class CourseOverview(TimeStampedModel):
         # they were never generated, or because they were flushed out after
         # a change to CourseOverviewImageConfig.
         if course_overview and not hasattr(course_overview, 'image_set'):
+            course_overview = cls.objects.get(id=course_id)
             CourseOverviewImageSet.create(course_overview)
 
         return course_overview or cls.load_from_module_store(course_id)
@@ -438,10 +446,9 @@ class CourseOverview(TimeStampedModel):
         """
         overviews = {
             overview.id: overview
-            for overview in cls.objects.select_related('image_set').filter(
-                id__in=course_ids,
+            for overview in use_read_replica_if_available(cls.objects.select_related('image_set').filter(
                 version__gte=cls.VERSION
-            )
+            ))
         }
         for course_id in course_ids:
             if course_id not in overviews:
@@ -733,14 +740,16 @@ class CourseOverview(TimeStampedModel):
             return course_overviews.filter(
                 end__lt=datetime.now().replace(tzinfo=pytz.UTC)
             )
-        return course_overviews
+        return use_read_replica_if_available(course_overviews)
 
     @classmethod
     def get_all_course_keys(cls):
         """
         Returns all course keys from course overviews.
         """
-        return CourseOverview.objects.values_list('id', flat=True)
+        return use_read_replica_if_available(
+            CourseOverview.objects.values_list('id', flat=True)
+        )
 
     def is_discussion_tab_enabled(self, user=None):
         """

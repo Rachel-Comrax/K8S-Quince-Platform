@@ -34,6 +34,7 @@ from common.djangoapps.student.roles import (
     CourseStaffRole
 )
 from common.djangoapps.util.json_request import JsonResponse
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.bulk_email.api import is_bulk_email_feature_enabled
 from lms.djangoapps.bulk_email.models_api import is_bulk_email_disabled_for_course
 from lms.djangoapps.certificates import api as certs_api
@@ -378,7 +379,10 @@ def _section_certificates(course):
         'certificate_statuses_with_count': certificate_statuses_with_count,
         'status': CertificateStatuses,
         'certificate_generation_history':
-            CertificateGenerationHistory.objects.filter(course_id=course.id).order_by("-created"),
+        
+            use_read_replica_if_available(
+            CertificateGenerationHistory.objects.filter(course_id=course.id).order_by("-created")
+            ),
         'urls': {
             'enable_certificate_generation': reverse(
                 'enable_certificate_generation',

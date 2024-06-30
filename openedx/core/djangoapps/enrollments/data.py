@@ -29,6 +29,7 @@ from common.djangoapps.student.models import (
     NonExistentCourseError
 )
 from common.djangoapps.student.role_helpers import get_course_roles
+from common.djangoapps.util.query import read_replica_or_default, use_read_replica_if_available
 
 log = logging.getLogger(__name__)
 
@@ -47,9 +48,9 @@ def get_course_enrollments(username, include_inactive=False):
         A serializable list of dictionaries of all aggregated enrollment data for a user.
 
     """
-    qset = CourseEnrollment.objects.filter(
+    qset = use_read_replica_if_available(CourseEnrollment.objects.filter(
         user__username=username,
-    ).order_by('created')
+    ).order_by('created'))
 
     if not include_inactive:
         qset = qset.filter(is_active=True)
@@ -91,7 +92,7 @@ def get_course_enrollment(username, course_id):
     """
     course_key = CourseKey.from_string(course_id)
     try:
-        enrollment = CourseEnrollment.objects.get(
+        enrollment = CourseEnrollment.objects.using(read_replica_or_default()).get(
             user__username=username, course_id=course_key
         )
         return CourseEnrollmentSerializer(enrollment).data
@@ -109,10 +110,10 @@ def get_user_enrollments(course_key):
     Raises:
         CourseEnrollment.DoesNotExist
     """
-    return CourseEnrollment.objects.filter(
+    return use_read_replica_if_available(CourseEnrollment.objects.filter(
         course_id=course_key,
         is_active=True
-    ).order_by('created')
+    ).order_by('created'))
 
 
 def create_course_enrollment(username, course_id, mode, is_active, enterprise_uuid=None, force_enrollment=False):

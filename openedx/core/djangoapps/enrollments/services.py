@@ -11,6 +11,7 @@ from django.db.models import Q
 from opaque_keys.edx.keys import CourseKey
 from common.djangoapps.course_modes.models import CourseMode
 from common.djangoapps.student.models import CourseEnrollment
+from common.djangoapps.util.query import use_read_replica_if_available
 from openedx.core.djangoapps.content.course_overviews.api import get_course_overview_or_none
 
 USER_MODEL = get_user_model()
@@ -26,7 +27,7 @@ class EnrollmentsService:
         """
         Returns a list of active enrollments for a course
         """
-        return CourseEnrollment.objects.filter(course_id=course_id, is_active=True)
+        return use_read_replica_if_available(CourseEnrollment.objects.filter(course_id=course_id, is_active=True))
 
     def get_active_enrollments_by_course_and_user(self, course_id, user_id):
         """
@@ -66,7 +67,7 @@ class EnrollmentsService:
         * allow_honor_mode: represents whether the course allows users with enrollments
         in the honor mode are eligible to take proctored exams
         """
-        enrollments = CourseEnrollment.objects.filter(course_id=course_id, is_active=True)
+        enrollments = use_read_replica_if_available(CourseEnrollment.objects.filter(course_id=course_id, is_active=True))
 
         # We only want to get enrollments in paid modes.
         appropriate_modes = [

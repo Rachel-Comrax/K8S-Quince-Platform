@@ -26,6 +26,7 @@ from rest_framework.serializers import Serializer
 
 from lms.djangoapps.courseware.courses import get_course, get_course_with_access
 from common.djangoapps.edxmako.shortcuts import render_to_response
+from common.djangoapps.util.query import use_read_replica_if_available
 from openedx.core.djangoapps.course_groups.models import (
     CohortAssignmentNotAllowed,
     CohortChangeNotAllowed,
@@ -109,8 +110,9 @@ def _get_cohort_representation(cohort, course):
     return {
         'name': cohort.name,
         'id': cohort.id,
-        'user_count': cohort.users.filter(courseenrollment__course_id=course.location.course_key,
-                                          courseenrollment__is_active=1).count(),
+        'user_count': use_read_replica_if_available(
+            cohort.users.filter(courseenrollment__course_id=course.location.course_key,courseenrollment__is_active=1)
+        ).count(),
         'assignment_type': assignment_type,
         'user_partition_id': partition_id,
         'group_id': group_id,

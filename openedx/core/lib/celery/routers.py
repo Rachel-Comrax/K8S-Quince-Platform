@@ -7,11 +7,11 @@ For more, see https://celery.readthedocs.io/en/latest/userguide/routing.html#rou
 import logging
 
 from django.conf import settings
-
+from edx_django_utils.plugins import pluggable_override  # pylint: disable=import-error
 
 log = logging.getLogger(__name__)
 
-
+@pluggable_override('ROUTE_TASK_OVERRIDE')
 def route_task(name, args, kwargs, options, task=None, **kw):  # pylint: disable=unused-argument
     """
     Celery-defined method allowing for custom routing logic.

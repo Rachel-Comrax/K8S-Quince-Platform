@@ -29,6 +29,7 @@ class CustomCourseForEdX(models.Model):
     course_id = CourseKeyField(max_length=255, db_index=True)
     display_name = models.CharField(max_length=255)
     coach = models.ForeignKey(User, db_index=True, on_delete=models.CASCADE)
+    coach2 = models.ForeignKey(User, related_name='ccx_coach2', null=True, blank=True, db_index=True, on_delete=models.SET_NULL, db_column='coach_id_2')
     # if not empty, this field contains a json serialized list of
     # the master course modules
     structure_json = models.TextField(verbose_name='Structure JSON', blank=True, null=True)
@@ -103,7 +104,9 @@ class CustomCourseForEdX(models.Model):
             The CCXLocator corresponding to this CCX.
         """
         return CCXLocator.from_course_locator(self.course_id, str(self.id))
-
+    
+    def __str__(self):
+        return self.display_name
 
 class CcxFieldOverride(models.Model):
     """

@@ -1689,6 +1689,7 @@ def get_home_context(request, no_course=False):
         libraries = get_library_context(request, True)['libraries']
 
     home_context = {
+        'partners_email': configuration_helpers.get_value('STUDIO_REQUEST_EMAIL', settings.FEATURES.get('STUDIO_REQUEST_EMAIL', '')),
         'courses': active_courses,
         'split_studio_home': split_library_view_on_dashboard(),
         'archived_courses': archived_courses,

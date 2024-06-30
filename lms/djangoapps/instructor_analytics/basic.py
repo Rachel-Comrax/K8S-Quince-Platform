@@ -20,6 +20,7 @@ from opaque_keys.edx.keys import CourseKey, UsageKey
 
 import xmodule.graders as xmgraders
 from common.djangoapps.student.models import CourseEnrollment, CourseEnrollmentAllowed
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.certificates.data import CertificateStatuses
 from lms.djangoapps.certificates.models import GeneratedCertificate
 from lms.djangoapps.courseware.models import StudentModule
@@ -262,8 +263,11 @@ def get_enrollments_for_course(exam_attempts):
         for e in exam_attempts:
             users.append(e['user_id'])
 
-        enrollments = {c.user_id: c.mode for c in CourseEnrollment.objects.filter(
-            course_id=CourseKey.from_string(exam_attempts[0]['course_id']), user_id__in=users)}
+        queryset = use_read_replica_if_available(
+            CourseEnrollment.objects.filter(
+                course_id=CourseKey.from_string(exam_attempts[0]['course_id']), user_id__in=users)
+        )
+        enrollments = {c.user_id: c.mode for c in queryset}
         return enrollments
 
 
@@ -346,9 +350,11 @@ def list_problem_responses(course_key, problem_location, limit_responses=None):
     if problem_key.course_key != course_key:
         return []
 
-    smdat = StudentModule.objects.filter(
-        course_id=course_key,
-        module_state_key=problem_key
+    smdat = use_read_replica_if_available(
+        StudentModule.objects.filter(
+            course_id=course_key,
+            module_state_key=problem_key
+        )
     ).select_related('student')
     smdat = smdat.order_by('student')
     if limit_responses is not None:

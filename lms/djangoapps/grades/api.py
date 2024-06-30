@@ -11,6 +11,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from opaque_keys.edx.keys import CourseKey, UsageKey
 
 from common.djangoapps.track.event_transaction_utils import create_new_event_transaction_id, set_event_transaction_type
+from common.djangoapps.util.query import read_replica_or_default
 # Public Grades Modules
 from lms.djangoapps.grades import constants, context, course_data, events
 # Grades APIs that should NOT belong within the Grades subsystem
@@ -152,6 +153,6 @@ def _create_subsection_grade(user_id, course_key, usage_key):
     subsection = course.get_child(usage_key)
     if not subsection:
         raise Exception('Subsection with given usage_key does not exist.')
-    user = get_user_model().objects.get(id=user_id)
+    user = get_user_model().objects.using(read_replica_or_default()).get(id=user_id)
     subsection_grade = CreateSubsectionGrade(subsection, course_data.CourseData(user, course=course).structure, {}, {})
     return subsection_grade.update_or_create_model(user, force_update_subsections=True)

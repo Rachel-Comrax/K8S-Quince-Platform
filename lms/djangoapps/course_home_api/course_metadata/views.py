@@ -126,6 +126,7 @@ class CourseHomeMetadataView(RetrieveAPIView):
             'username': username,
             'is_staff': has_access(request.user, 'staff', course_key).has_access,
             'original_user_is_staff': original_user_is_staff,
+            'is_ccx': hasattr(course_key, 'ccx'),
             'number': course.display_number_with_default,
             'org': course.display_org_with_default,
             'start': course.start,

@@ -57,6 +57,7 @@ from user_util import user_util
 
 import openedx.core.djangoapps.django_comment_common.comment_client as cc
 from common.djangoapps.util.model_utils import emit_field_changed_events, get_changed_fields_dict
+from common.djangoapps.util.query import read_replica_or_default, use_read_replica_if_available
 from lms.djangoapps.courseware.toggles import streak_celebration_is_active
 from openedx.core.djangoapps.signals.signals import USER_ACCOUNT_ACTIVATED
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
@@ -199,7 +200,7 @@ def user_by_anonymous_id(uid):
         return cache_response.value
 
     try:
-        user = User.objects.get(anonymoususerid__anonymous_user_id=uid)
+        user = User.objects.using(read_replica_or_default()).get(anonymoususerid__anonymous_user_id=uid)
         request_cache.set(uid, user)
         return user
     except ObjectDoesNotExist:
@@ -1126,7 +1127,9 @@ def get_user_by_username_or_email(username_or_email):
     """
     username_or_email = strip_if_string(username_or_email)
     # there should be one user with either username or email equal to username_or_email
-    user = User.objects.get(Q(email=username_or_email) | Q(username=username_or_email))
+    user = User.objects.using(read_replica_or_default()).get(
+        Q(email=username_or_email) | Q(username=username_or_email)
+    )
     if user.username == username_or_email:
         UserRetirementRequest = apps.get_model('user_api', 'UserRetirementRequest')
         if UserRetirementRequest.has_user_requested_retirement(user):
@@ -1135,8 +1138,8 @@ def get_user_by_username_or_email(username_or_email):
 
 
 def get_user(email):
-    user = User.objects.get(email=email)
-    u_prof = UserProfile.objects.get(user=user)
+    user = User.objects.using(read_replica_or_default()).get(email=email)
+    u_prof = UserProfile.objects.using(read_replica_or_default()).get(user=user)
     return user, u_prof
 
 
@@ -1447,7 +1450,9 @@ class EntranceExamConfiguration(models.Model):
         can_skip = False
         if ENTRANCE_EXAMS.is_enabled():
             try:
-                record = EntranceExamConfiguration.objects.get(user=user, course_id=course_key)
+                record = EntranceExamConfiguration.objects.using(
+                    read_replica_or_default()
+                ).get(user=user, course_id=course_key)
                 can_skip = record.skip_entrance_exam
             except EntranceExamConfiguration.DoesNotExist:
                 can_skip = False

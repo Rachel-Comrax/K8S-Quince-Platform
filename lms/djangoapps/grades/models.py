@@ -25,7 +25,7 @@ from model_utils.models import TimeStampedModel
 from opaque_keys.edx.django.models import CourseKeyField, UsageKeyField
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from simple_history.models import HistoricalRecords
-
+from common.djangoapps.util.query import read_replica_or_default
 from lms.djangoapps.courseware.fields import UnsignedBigIntAutoField
 from lms.djangoapps.grades import events  # lint-amnesty, pylint: disable=unused-import
 from openedx.core.lib.cache_utils import get_cache
@@ -799,7 +799,7 @@ class PersistentSubsectionGradeOverride(models.Model):
         if prefetch_values is not None:
             return prefetch_values.get(usage_key)
         try:
-            return cls.objects.get(
+            return cls.objects.using(read_replica_or_default()).get(
                 grade__user_id=user_id,
                 grade__course_id=usage_key.course_key,
                 grade__usage_key=usage_key,

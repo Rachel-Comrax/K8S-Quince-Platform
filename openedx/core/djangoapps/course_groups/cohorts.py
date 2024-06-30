@@ -18,10 +18,12 @@ from django.utils.translation import gettext as _
 from edx_django_utils.cache import RequestCache
 from eventtracking import tracker
 
+from common.djangoapps.student.models import get_user_by_username_or_email
+from common.djangoapps.util.query import read_replica_or_default, use_read_replica_if_available
+
 from lms.djangoapps.courseware import courses
 from openedx.core.lib.cache_utils import request_cached
 from openedx.core.lib.courses import get_course_by_id
-from common.djangoapps.student.models import get_user_by_username_or_email
 
 from .models import (
     CohortMembership,
@@ -359,7 +361,7 @@ def get_cohort_by_name(course_key, name):
     Return the CourseUserGroup object for the given cohort.  Raises DoesNotExist
     it isn't present.
     """
-    return CourseUserGroup.objects.get(
+    return CourseUserGroup.objects.using(read_replica_or_default()).get(
         course_id=course_key,
         group_type=CourseUserGroup.COHORT,
         name=name
@@ -371,7 +373,7 @@ def get_cohort_by_id(course_key, cohort_id):
     Return the CourseUserGroup object for the given cohort.  Raises DoesNotExist
     it isn't present.  Uses the course_key for extra validation.
     """
-    return CourseUserGroup.objects.get(
+    return CourseUserGroup.objects.using(read_replica_or_default()).get(
         course_id=course_key,
         group_type=CourseUserGroup.COHORT,
         id=cohort_id
@@ -409,7 +411,9 @@ def is_cohort_exists(course_key, name):
     """
     Check if a cohort already exists.
     """
-    return CourseUserGroup.objects.filter(course_id=course_key, group_type=CourseUserGroup.COHORT, name=name).exists()
+    return use_read_replica_if_available(
+        CourseUserGroup.objects.filter(course_id=course_key, group_type=CourseUserGroup.COHORT, name=name)
+    ).exists()
 
 
 def remove_user_from_cohort(cohort, username_or_email):
@@ -531,7 +535,7 @@ def get_group_info_for_cohort(cohort, use_cached=False):
     cache.pop(cache_key, None)
 
     try:
-        partition_group = CourseUserGroupPartitionGroup.objects.get(course_user_group=cohort)
+        partition_group = CourseUserGroupPartitionGroup.objects.using(read_replica_or_default()).get(course_user_group=cohort)
         return cache.setdefault(cache_key, (partition_group.group_id, partition_group.partition_id))
     except CourseUserGroupPartitionGroup.DoesNotExist:
         pass
@@ -592,7 +596,7 @@ def _get_course_cohort_settings(course_key):
         Http404 if course_key is invalid.
     """
     try:
-        course_cohort_settings = CourseCohortsSettings.objects.get(course_id=course_key)
+        course_cohort_settings = CourseCohortsSettings.objects.using(read_replica_or_default()).get(course_id=course_key)
     except CourseCohortsSettings.DoesNotExist:
         course = get_course_by_id(course_key)
         course_cohort_settings = migrate_cohort_settings(course)
@@ -602,7 +606,7 @@ def _get_course_cohort_settings(course_key):
 def get_legacy_discussion_settings(course_key):  # lint-amnesty, pylint: disable=missing-function-docstring
 
     try:
-        course_cohort_settings = CourseCohortsSettings.objects.get(course_id=course_key)
+        course_cohort_settings = CourseCohortsSettings.objects.using(read_replica_or_default()).get(course_id=course_key)
         return {
             'is_cohorted': course_cohort_settings.is_cohorted,
             'cohorted_discussions': course_cohort_settings.cohorted_discussions,

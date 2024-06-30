@@ -1,0 +1,143 @@
+# syntax=docker/dockerfile:1.0.0-experimental
+
+###### Minimal image with base system requirements for most stages
+FROM docker.io/ubuntu:20.04 AS minimal
+
+RUN apt update && \
+    apt install -y --no-install-recommends curl git language-pack-en ca-certificates openssh-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /edx/etc /edx/app/edxapp/themes && \
+    mkdir -p /root/.ssh && \
+    ssh-keyscan gitlab.raccoongang.com >> /root/.ssh/known_hosts
+
+ENV LC_ALL en_US.UTF-8
+
+###### Install python with pyenv in /opt/pyenv and create virtualenv in /edx/app/edxapp/venv
+FROM minimal AS python
+
+RUN apt update && \
+    DEBIAN_FRONTEND="noninteractive" apt install -y --no-install-recommends \
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libopenblas-dev \
+    liblapack-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    wget \
+    curl \
+    llvm \
+    libncurses5-dev \
+    libncursesw5-dev \
+    xz-utils \
+    tk-dev \
+    libffi-dev \
+    liblzma-dev \
+    python-openssl \
+    git
+
+ARG PYTHON_VERSION=3.8.10
+ENV PYENV_ROOT /opt/pyenv
+RUN git clone https://github.com/pyenv/pyenv $PYENV_ROOT --branch v2.2.4 --depth 1
+RUN $PYENV_ROOT/bin/pyenv install $PYTHON_VERSION
+RUN $PYENV_ROOT/versions/$PYTHON_VERSION/bin/python -m venv /edx/app/edxapp/venv
+
+###### Copy edx-platform code
+FROM minimal AS code
+WORKDIR /edx/app/edxapp/edx-platform
+COPY . .
+
+###### Install python requirements in virtualenv
+FROM python AS python-requirements
+
+WORKDIR /edx/app/edxapp/edx-platform
+ENV PATH /edx/app/edxapp/venv/bin:${PATH}
+ENV VIRTUAL_ENV /edx/app/edxapp/venv/
+ENV CFLAGS="-O2 -g0 -Wl,--strip-all -I/usr/include:/usr/local/include -L/usr/lib:/usr/local/lib"
+
+COPY requirements requirements
+
+RUN sed -i '/requirements\/edx\/local.in/d' ./requirements/edx/base.txt && \
+    apt update && apt install -y --no-install-recommends \
+    software-properties-common \
+    libmysqlclient-dev \
+    libxmlsec1-dev \
+    gfortran
+
+# Install the right version of pip/setuptools
+RUN pip install setuptools==59.4.0 pip==20.0.2
+
+# Install base requirements
+RUN pip install --global-option=build_ext --compile --no-cache-dir Cython && \
+    pip install --global-option=build_ext --compile --no-cache-dir numpy==1.20.2 && \
+    pip install --global-option=build_ext --compile --no-cache-dir scipy==1.6.2 && \
+    pip install --global-option=build_ext --compile --no-cache-dir sympy==1.6.2
+COPY --from=code /edx/app/edxapp/edx-platform /edx/app/edxapp/edx-platform
+RUN --mount=type=ssh pip install wheel==0.37.0 && \
+    pip install --no-cache-dir -r ./requirements/edx/base.txt && \
+    pip install --no-cache-dir -r ./requirements/edx/custom.txt
+
+#RUN find /edx/app/edxapp/venv/ \( -type d -name test -o -name tests \) -o \( -type f -a -name '*.pyc' -o -name '*.pyo' \) -exec rm -rf '{}' \+
+
+###### Production image with system and python requirements
+FROM minimal AS production
+
+WORKDIR /edx/app/edxapp/edx-platform
+
+ENV VIRTUAL_ENV /edx/app/edxapp/venv/
+ENV PATH /edx/app/edxapp/venv/bin:${PATH}
+
+COPY --from=code /edx/app/edxapp/edx-platform /edx/app/edxapp/edx-platform
+COPY --from=python /opt/pyenv /opt/pyenv
+COPY --from=python-requirements /edx/app/edxapp/venv /edx/app/edxapp/venv
+# Install system requirements
+
+RUN apt update && \
+    DEBIAN_FRONTEND="noninteractive" apt install -y --no-install-recommends \
+    gettext \
+    libopenblas-base \
+    libmysqlclient21=8.0.19-0ubuntu5 \
+    libsqlite3-0 \
+    libxmlsec1 libxmlsec1-gcrypt libxmlsec1-gnutls libxmlsec1-nss libxmlsec1-openssl \
+    #gfortran \
+    graphviz \
+    libffi-dev \
+    libfreetype6 \
+    libgeos-3.8.0 libgeos-c1v5 \
+    libjpeg8 \
+    #liblapack-dev \
+    libpng16-16 \
+    lynx \
+    ntp \
+    pkg-config \
+    rdfind \
+    openssh-client \
+    supervisor vim nano && \
+    mkdir -p /var/log/supervisor && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install -r requirements/edx/local.in
+
+# Install proper versions of project-specific dependencies:
+# - release.txt - for Stage/Prod
+# - development.txt - for Dev
+ENV STATIC_ROOT=/edx/var/edxapp/staticfiles/
+ARG GH_TOKEN
+ARG BUILD_TYPE
+ARG REPOSITORIES_DIR=privaterepos
+
+# COPY privaterepos privaterepos
+# COPY requirements/rg/${BUILD_TYPE}.txt /app/centralized_requirements.txt
+COPY requirements/rg/${BUILD_TYPE}.txt centralized_requirements_${BUILD_TYPE}.txt
+# WORKDIR /app
+RUN pip install -r centralized_requirements_${BUILD_TYPE}.txt
+# RUN --mount=type=ssh pip install -r requirements/rg/${BUILD_TYPE}.txt
+
+ENV REVISION_CFG /edx/etc/revisions.yml
+
+RUN echo "EDX_PLATFORM_REVISION: nutmeg-rg" > /edx/etc/revisions.yml && \
+    mkdir -p /edx/var/edxapp/staticfiles/themes

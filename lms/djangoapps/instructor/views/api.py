@@ -44,7 +44,7 @@ from rest_framework.views import APIView  # lint-amnesty, pylint: disable=wrong-
 from submissions import api as sub_api  # installed from the edx-submissions repository  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.modulestore.django import modulestore  # lint-amnesty, pylint: disable=wrong-import-order
 from xmodule.modulestore.exceptions import ItemNotFoundError  # lint-amnesty, pylint: disable=wrong-import-order
-
+from edx_django_utils.plugins import pluggable_override # pylint: disable=import-error
 from common.djangoapps.course_modes.models import CourseMode
 from common.djangoapps.student import auth
 from common.djangoapps.student.api import is_user_enrolled_in_course
@@ -989,6 +989,7 @@ def bulk_beta_modify_access(request, course_id):
     action="'allow' or 'revoke'"
 )
 @common_exceptions_400
+@pluggable_override('OVERRIDE_MODIFY_ACCESS')
 def modify_access(request, course_id):
     """
     Modify staff/instructor access of other user.

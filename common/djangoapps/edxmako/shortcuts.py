@@ -24,13 +24,14 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 
 from edx_django_utils.monitoring import set_custom_attribute
+from edx_django_utils.plugins import pluggable_override
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from xmodule.util.xmodule_django import get_current_request_hostname  # lint-amnesty, pylint: disable=wrong-import-order
 
 from . import Engines
 
 log = logging.getLogger(__name__)
-
+@pluggable_override('OVERRIDE_MARKETING_LINK')
 
 def marketing_link(name):
     """Returns the correct URL for a link to the marketing site
@@ -107,7 +108,7 @@ def is_any_marketing_link_set(names):
 
     return any(is_marketing_link_set(name) for name in names)
 
-
+@pluggable_override('OVERRIDE_IS_MARKETING_LINK_SET')
 def is_marketing_link_set(name):
     """
     Returns a boolean if a given named marketing link is configured.

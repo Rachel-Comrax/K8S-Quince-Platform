@@ -465,7 +465,7 @@
             },
 
             saveSuccess: function() {
-                this.trigger('auth-complete');
+                this('auth-complete');
             },
 
             saveError: function(error) {

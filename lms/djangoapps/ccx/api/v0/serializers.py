@@ -15,6 +15,7 @@ class CCXCourseSerializer(serializers.ModelSerializer):
     master_course_id = serializers.CharField(source='course_id')
     display_name = serializers.CharField()
     coach_email = serializers.EmailField(source='coach.email')
+    coach2_email = serializers.SerializerMethodField()
     start = serializers.CharField(allow_blank=True)
     due = serializers.CharField(allow_blank=True)
     max_students_allowed = serializers.IntegerField(source='max_student_enrollments_allowed')
@@ -27,6 +28,7 @@ class CCXCourseSerializer(serializers.ModelSerializer):
             "master_course_id",
             "display_name",
             "coach_email",
+            "coach2_email",
             "start",
             "due",
             "max_students_allowed",
@@ -52,3 +54,10 @@ class CCXCourseSerializer(serializers.ModelSerializer):
         Getter for the Course Blocks. The list is stored in a compressed field.
         """
         return obj.structure or []
+    
+    @staticmethod
+    def get_coach2_email(obj):
+        """
+        Getter for the secound coach email address
+        """
+        return obj.coach2.email if obj.coach2 else None

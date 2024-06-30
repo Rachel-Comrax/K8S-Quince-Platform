@@ -14,6 +14,7 @@ from opaque_keys.edx.django.models import CourseKeyField
 
 from openedx.core.lib.cache_utils import get_cache
 from common.djangoapps.student.models import CourseAccessRole
+from common.djangoapps.util.query import use_read_replica_if_available
 
 log = logging.getLogger(__name__)
 
@@ -308,7 +309,7 @@ class RoleBase(AccessRole):
             courseaccessrole__org=self.org,
             courseaccessrole__course_id=self.course_key
         )
-        return entries
+        return use_read_replica_if_available(entries)
 
     def get_orgs_for_user(self, user):
         """

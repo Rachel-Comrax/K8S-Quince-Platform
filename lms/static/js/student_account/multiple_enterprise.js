@@ -60,6 +60,8 @@
             },
 
             redirect: function(url) {
+                if (window !== parent)
+                    parent.postMessage("login success", "*");
                 window.location.href = url;
             },
 

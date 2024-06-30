@@ -14,8 +14,9 @@ from common.djangoapps.course_modes.models import CourseMode
 from common.djangoapps.student.models import CourseEnrollment
 from lms.djangoapps.courseware.utils import _use_new_financial_assistance_flow
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
-from openedx.features.course_experience.course_tools import CourseTool
 
+from common.djangoapps.util.query import read_replica_or_default
+from openedx.features.course_experience.course_tools import CourseTool
 
 class FinancialAssistanceTool(CourseTool):
     """
@@ -36,7 +37,7 @@ class FinancialAssistanceTool(CourseTool):
         now = datetime.datetime.now(pytz.UTC)
         feature_flags = None
         try:
-            course_overview = CourseOverview.objects.get(id=course_key)
+            course_overview = CourseOverview.objects.using(read_replica_or_default()).get(id=course_key)
         except CourseOverview.DoesNotExist:
             course_overview = None
 

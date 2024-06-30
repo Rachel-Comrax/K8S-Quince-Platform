@@ -16,6 +16,7 @@ from common.djangoapps.student.models import get_user_by_username_or_email
 from common.djangoapps.track.event_transaction_utils import create_new_event_transaction_id, set_event_transaction_type
 from common.djangoapps.track.views import task_track
 from common.djangoapps.util.db import outer_atomic
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.courseware.courses import get_problems_in_section
 from lms.djangoapps.courseware.model_data import FieldDataCache
 from lms.djangoapps.courseware.models import StudentModule
@@ -421,7 +422,7 @@ def _get_modules_to_update(course_id, usage_keys, student_identifier, filter_fcn
     if student:
         module_query_params['student_id'] = student.id
 
-    student_modules = StudentModule.get_state_by_params(**module_query_params)
+    student_modules = use_read_replica_if_available(StudentModule.get_state_by_params(**module_query_params))
     if filter_fcn is not None:
         student_modules = filter_fcn(student_modules)
 

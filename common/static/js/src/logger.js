@@ -56,6 +56,10 @@
                         });
                     }
                 }
+                // CampusIL: handle the long html contexts
+                if (data && data[0] && data[0].startsWith("input_")) {
+                    data[1] = "Too long content was deleted by CampusIL team.";
+                }
                 // Regardless of whether any callbacks were made, log this event.
                 return sendRequest({
                     event_type: eventType,

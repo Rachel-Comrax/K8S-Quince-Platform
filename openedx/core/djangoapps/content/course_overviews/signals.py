@@ -9,6 +9,7 @@ from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import Signal
 from django.dispatch.dispatcher import receiver
+from common.djangoapps.util.query import read_replica_or_default
 
 from openedx.core.djangoapps.signals.signals import COURSE_CERT_DATE_CHANGE
 from xmodule.data import CertificatesDisplayBehaviors
@@ -35,7 +36,7 @@ def _listen_for_course_publish(sender, course_key, **kwargs):  # pylint: disable
     entry.
     """
     try:
-        previous_course_overview = CourseOverview.objects.get(id=course_key)
+        previous_course_overview = CourseOverview.objects.using(read_replica_or_default()).get(id=course_key)
     except CourseOverview.DoesNotExist:
         previous_course_overview = None
     updated_course_overview = CourseOverview.load_from_module_store(course_key)

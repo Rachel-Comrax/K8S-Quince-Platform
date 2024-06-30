@@ -14,6 +14,7 @@ from opaque_keys.edx.keys import CourseKey
 from common.djangoapps.course_modes.models import CourseMode, format_course_price, get_cosmetic_verified_display_price
 from common.djangoapps.entitlements.models import CourseEntitlement
 from common.djangoapps.student.models import CourseEnrollment
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.commerce.utils import EcommerceService
 from lms.djangoapps.courseware.access import has_staff_access_to_preview_mode
 from lms.djangoapps.courseware.utils import can_show_verified_upgrade, verified_upgrade_deadline_link
@@ -241,7 +242,9 @@ def get_dashboard_course_info(user, dashboard_enrollments):
     course_info = None
     if DASHBOARD_INFO_FLAG.is_enabled():
         # Get the enrollments here since the dashboard filters out those with completed entitlements
-        user_enrollments = CourseEnrollment.objects.select_related('course').filter(user_id=user.id)
+        user_enrollments = use_read_replica_if_available(
+            CourseEnrollment.objects.select_related('course').filter(user_id=user.id)
+        )
 
         course_info = {
             str(dashboard_enrollment.course): get_base_experiment_metadata_context(dashboard_enrollment.course,

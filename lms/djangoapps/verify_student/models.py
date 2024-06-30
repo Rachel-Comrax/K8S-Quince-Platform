@@ -32,6 +32,7 @@ from django.utils.translation import gettext_lazy
 from model_utils import Choices
 from model_utils.models import StatusModel, TimeStampedModel
 from opaque_keys.edx.django.models import CourseKeyField
+from common.djangoapps.util.query import use_read_replica_if_available
 
 from lms.djangoapps.verify_student.ssencrypt import (
     decode_and_decrypt,
@@ -1144,9 +1145,9 @@ class VerificationDeadline(TimeStampedModel):
         Returns:
             dict: Map of course keys to datetimes (verification deadlines)
         """
-        verification_deadlines = VerificationDeadline.objects.filter(
+        verification_deadlines = use_read_replica_if_available(VerificationDeadline.objects.filter(
             course_key__in=enrollments_qs.values('course_id')
-        )
+        ))
         return {
             deadline.course_key: deadline.deadline
             for deadline in verification_deadlines

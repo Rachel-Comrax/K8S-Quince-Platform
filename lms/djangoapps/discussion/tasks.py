@@ -26,6 +26,7 @@ from xmodule.modulestore.django import modulestore
 
 import openedx.core.djangoapps.django_comment_common.comment_client as cc
 from common.djangoapps.track import segment
+from common.djangoapps.util.query import read_replica_or_default
 from lms.djangoapps.discussion.django_comment_client.utils import (
     permalink,
     get_users_with_moderator_roles,
@@ -199,7 +200,7 @@ def _is_user_subscribed_to_thread(cc_user, thread_id):  # lint-amnesty, pylint: 
 
 
 def _get_course_language(course_id):
-    course_overview = CourseOverview.objects.get(id=course_id)
+    course_overview = CourseOverview.objects.using(read_replica_or_default()).get(id=course_id)
     language = course_overview.language or DEFAULT_LANGUAGE
     return language
 

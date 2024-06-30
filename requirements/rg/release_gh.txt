@@ -1,0 +1,28 @@
+# This file isn't a part of the standard edx-platform requirements tree.
+# The following dependencies are completely project-specific - development versions:
+-e git+https://github.com/Technion-WeBWorK/xblock-webwork.git@master#egg=webwork_xblock
+-e git+https://github.com/ubc/ubcpi.git@1.0.0#egg=ubcpi-xblock==1.0.0
+-e git+https://github.com/edx/xblock-in-video-quiz.git@master#egg=invideoquiz_xblock
+-e git+https://github.com/open-craft/xblock-activetable.git@v0.3#egg=activetable-xblock
+-e git+https://github.com/openedx/xblock-image-explorer.git@v2.0#egg=xblock-image-explorer
+-e git+https://github.com/edx-olive/edx-val.git@2.0.3-a#egg=edxval
+# Upgrade of the enterprise application, backported fixes for MySQL8.0 as it has restrictions for table names
+-e git+https://github.com/raccoongang/edx-enterprise.git@3.42.6#egg=edx-enterprise
+
+django-password-validators==1.7.0
+openedx-completion-aggregator==4.0.0
+jsonschema==4.4.0 # needed for campus-edx-extensions, won't touch the plugin so far, its development is not our part
+
+# Install packages
+
+-e git+https://${GH_TOKEN}@github.com/edx-olive/K8S-Nutmeg-Campus-EDX-Extensions@release/14.12.00#egg=campus_edx_extensions
+-e git+https://${GH_TOKEN}@github.com/edx-olive/K8S-Nutmeg-xblock-in-video-collaboration@master#egg=annoto-xblock
+-e git+https://${GH_TOKEN}@github.com/edx-olive/K8S-Nutmeg-Campus-Extended-Translations@feat/test#egg=extended_translations
+-e git+https://${GH_TOKEN}@github.com/edx-olive/K8S-Nutmeg-edx-ora2@4.1.3.1#egg=ora2
+
+-e git+https://${GH_TOKEN}@github.com/edx-olive/RG-Campus-Social-Auth@1.1.3#egg=campus_social_auth
+-e git+https://${GH_TOKEN}@github.com/edx-olive/RG-Custom-registration-form@1.1.0#egg=custom_reg_form
+
+-e git+https://${GH_TOKEN}@github.com/edx-olive/RG-periodic-instructor-reports@v2.0.7#egg=periodic-instructor-reports
+-e git+https://${GH_TOKEN}@github.com/edx-olive/K8S-Nutmeg-Django-GTM@v2.0.0#egg=django_gtm
+-e git+https://${GH_TOKEN}@github.com/edx-olive/K8S-Nutmeg-event-routing-backends.git@campus-v14.11.00#egg=event_routing_backends

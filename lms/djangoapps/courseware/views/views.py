@@ -61,6 +61,7 @@ from common.djangoapps.util.course import course_location_from_key
 from common.djangoapps.util.db import outer_atomic
 from common.djangoapps.util.milestones_helpers import get_prerequisite_courses_display
 from common.djangoapps.util.views import ensure_valid_course_key, ensure_valid_usage_key
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.ccx.custom_exception import CCXLocatorValidationException
 from lms.djangoapps.certificates import api as certs_api
 from lms.djangoapps.certificates.data import CertificateStatuses
@@ -1226,10 +1227,12 @@ def submission_history(request, course_id, learner_identifier, location):
 
     # This is ugly, but until we have a proper submissions API that we can use to provide
     # the scores instead, it will have to do.
-    csm = StudentModule.objects.filter(
-        module_state_key=usage_key,
-        student__username=found_user_name,
-        course_id=course_key)
+    csm = use_read_replica_if_available(
+        StudentModule.objects.filter(
+            module_state_key=usage_key,
+            student__username=found_user_name,
+            course_id=course_key)
+    )
 
     scores = BaseStudentModuleHistory.get_history(csm)
 

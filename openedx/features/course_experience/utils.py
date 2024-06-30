@@ -11,6 +11,7 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 from openedx.core.lib.cache_utils import request_cached
 from openedx.features.course_experience import RELATIVE_DATES_DISABLE_RESET_FLAG, RELATIVE_DATES_FLAG
 from common.djangoapps.student.models import CourseEnrollment
+from common.djangoapps.util.query import read_replica_or_default
 from xmodule.modulestore.django import modulestore  # lint-amnesty, pylint: disable=wrong-import-order
 
 
@@ -164,7 +165,7 @@ def dates_banner_should_display(course_key, user):
         # learners try to reset their deadlines.
         return False, True
 
-    course_overview = CourseOverview.objects.get(id=str(course_key))
+    course_overview = CourseOverview.objects.using(read_replica_or_default()).get(id=str(course_key))
 
     # Only display the banner for self-paced courses
     if not course_overview.self_paced:

@@ -33,6 +33,7 @@ from xmodule.modulestore.django import SignalHandler  # lint-amnesty, pylint: di
 
 from .paginators import CCXAPIPagination
 from .serializers import CCXCourseSerializer
+from edx_django_utils.plugins import pluggable_override
 
 log = logging.getLogger(__name__)
 TODAY = datetime.datetime.today  # for patching in tests
@@ -394,6 +395,8 @@ class CCXListView(GenericAPIView):
         serializer = self.get_serializer(page, many=True)
         response = self.get_paginated_response(serializer.data)
         return response
+    
+    @pluggable_override('OVERRIDE_API_CCX_ADD_CLASS_POST')
 
     def post(self, request):
         """
@@ -664,7 +667,7 @@ class CCXDetailView(GenericAPIView):
                     'error_code': error_code
                 }
             )
-        ccx_course_overview = CourseOverview.get_from_id(ccx_course_key)
+        ccx_course_overview = CourseOverview.get_from_id(ccx_course_key, use_replica=False)
         # clean everything up with a single transaction
         with transaction.atomic():
             CcxFieldOverride.objects.filter(ccx=ccx_course_object).delete()

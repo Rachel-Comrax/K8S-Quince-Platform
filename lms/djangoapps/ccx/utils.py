@@ -16,6 +16,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.urls import reverse
 from django.utils.translation import gettext as _
+from django.db.models import Q
 
 from common.djangoapps.student.models import CourseEnrollment, CourseEnrollmentException
 from common.djangoapps.student.roles import CourseCcxCoachRole, CourseInstructorRole, CourseStaffRole
@@ -159,8 +160,8 @@ def get_ccx_for_coach(course, coach):
     None.
     """
     ccxs = CustomCourseForEdX.objects.filter(
+        Q(coach=coach) | Q(coach2=coach),
         course_id=course.id,
-        coach=coach
     )
     # XXX: In the future, it would be nice to support more than one ccx per
     # coach per course.  This is a place where that might happen.
@@ -183,9 +184,9 @@ def get_ccx_by_ccx_id(course, coach, ccx_id):
     """
     try:
         ccx = CustomCourseForEdX.objects.get(
+            Q(coach=coach) | Q(coach2=coach),
             id=ccx_id,
             course_id=course.id,
-            coach=coach
         )
     except CustomCourseForEdX.DoesNotExist:
         return None

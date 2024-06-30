@@ -19,6 +19,7 @@ from django.utils.translation import gettext_lazy as _
 from edx_django_utils.cache import RequestCache
 from opaque_keys.edx.django.models import CourseKeyField
 from simple_history.models import HistoricalRecords
+from common.djangoapps.util.query import use_read_replica_if_available
 
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.lib.cache_utils import request_cached
@@ -315,7 +316,7 @@ class CourseMode(models.Model):
 
         """
         modes_by_course = defaultdict(list)
-        for mode in cls.objects.filter(course_id__in=course_id_list):
+        for mode in use_read_replica_if_available(cls.objects.filter(course_id__in=course_id_list)):            
             modes_by_course[mode.course_id].append(mode.to_tuple())
 
         # Assign default modes if nothing available in the database
@@ -433,7 +434,7 @@ class CourseMode(models.Model):
         if only_selectable:
             found_course_modes = found_course_modes.exclude(mode_slug__in=cls.CREDIT_MODES)
 
-        modes = ([mode.to_tuple() for mode in found_course_modes])
+        modes = ([mode.to_tuple() for mode in use_read_replica_if_available(found_course_modes)])
         if not modes:
             modes = [cls.DEFAULT_MODE]
 

@@ -30,6 +30,7 @@ from rest_framework.views import APIView
 
 from common.djangoapps.student.models import CourseAccessRole, CourseEnrollment
 from common.djangoapps.util.model_utils import truncate_fields
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.courseware.courses import get_course_with_access, has_access
 from lms.djangoapps.discussion.django_comment_client.utils import has_discussion_privileges
 from lms.djangoapps.teams.models import CourseTeam, CourseTeamMembership
@@ -1386,7 +1387,9 @@ class MembershipListView(ExpandableFieldViewMixin, GenericAPIView):
                     build_api_error(gettext_noop("No teamset found in given course with given id")),
                     status=status.HTTP_404_NOT_FOUND
                 )
-            teamset_teams = CourseTeam.objects.filter(course_id=requested_course_key, topic_id=teamset_id)
+            teamset_teams = use_read_replica_if_available(
+                CourseTeam.objects.filter(course_id=requested_course_key, topic_id=teamset_id)
+            )
             if has_course_staff_privileges(request.user, requested_course_key):
                 teams_with_access = list(teamset_teams)
             else:

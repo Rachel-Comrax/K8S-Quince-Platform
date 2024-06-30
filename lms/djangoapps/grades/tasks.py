@@ -21,6 +21,7 @@ from submissions import api as sub_api
 from common.djangoapps.student.models import CourseEnrollment
 from common.djangoapps.track.event_transaction_utils import set_event_transaction_id, set_event_transaction_type
 from common.djangoapps.util.date_utils import from_timestamp
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.course_blocks.api import get_course_blocks
 from lms.djangoapps.courseware.model_data import get_score
 from lms.djangoapps.grades.config.models import ComputeGradesSetting
@@ -126,7 +127,7 @@ def compute_grades_for_course(course_key, offset, batch_size, **kwargs):  # pyli
         log.info("Attempted compute_grades_for_course for course '%s', but grades are frozen.", course_key)
         return
 
-    enrollments = CourseEnrollment.objects.filter(course_id=course_key).order_by('created')
+    enrollments = use_read_replica_if_available(CourseEnrollment.objects.filter(course_id=course_key).order_by('created'))    
     student_iter = (enrollment.user for enrollment in enrollments[offset:offset + batch_size])
     for result in CourseGradeFactory().iter(users=student_iter, course_key=course_key, force_update=True):
         if result.error is not None:
@@ -363,7 +364,7 @@ def _course_task_args(course_key, **kwargs):
     Helper function to generate course-grade task args.
     """
     from_settings = kwargs.pop('from_settings', True)
-    enrollment_count = CourseEnrollment.objects.filter(course_id=course_key).count()
+    enrollment_count = use_read_replica_if_available(CourseEnrollment.objects.filter(course_id=course_key)).count()
     if enrollment_count == 0:
         log.warning(f"No enrollments found for {course_key}")
 

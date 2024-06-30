@@ -568,6 +568,7 @@ msgstr ""
 
 #: common/static/common/js/discussion/views/new_post_view.js
 msgid "Your post will be discarded."
+msgstr "הפוסט שלך יבוטל"
 msgstr "Ýöür pöst wïll ßé dïsçärdéd. Ⱡ'σяєм ιρѕυм ∂σłσя ѕιт αмєт, ¢σηѕє¢#"
 
 #: common/static/common/js/discussion/views/response_comment_show_view.js

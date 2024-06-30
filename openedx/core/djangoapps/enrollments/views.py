@@ -52,6 +52,7 @@ from openedx.core.djangoapps.user_api.preferences.api import update_email_opt_in
 from openedx.core.lib.api.authentication import BearerAuthenticationAllowInactiveUser
 from openedx.core.lib.api.permissions import ApiKeyHeaderPermission, ApiKeyHeaderPermissionIsAuthenticated
 from openedx.core.lib.api.view_utils import DeveloperErrorViewMixin
+from common.djangoapps.util.query import use_read_replica_if_available
 from openedx.core.lib.exceptions import CourseNotFoundError
 from openedx.core.lib.log_utils import audit_log
 from openedx.features.enterprise_support.api import (
@@ -1015,8 +1016,7 @@ class CourseEnrollmentsApiListView(DeveloperErrorViewMixin, ListAPIView):
             queryset = queryset.filter(user__username__in=usernames)
         if emails:
             queryset = queryset.filter(user__email__in=emails)
-        return queryset
-
+        return use_read_replica_if_available(queryset)
 
 class EnrollmentAllowedView(APIView):
     """

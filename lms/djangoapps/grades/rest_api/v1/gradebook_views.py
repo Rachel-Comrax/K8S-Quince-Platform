@@ -30,6 +30,7 @@ from common.djangoapps.track.event_transaction_utils import (
     set_event_transaction_type
 )
 from common.djangoapps.util.date_utils import to_timestamp
+from common.djangoapps.util.query import use_read_replica_if_available
 from lms.djangoapps.course_blocks.api import get_course_blocks
 from lms.djangoapps.grades.api import CourseGradeFactory, clear_prefetched_course_and_subsection_grades
 from lms.djangoapps.grades.api import constants as grades_constants
@@ -679,7 +680,7 @@ class GradebookView(GradeViewMixin, PaginatedAPIView):
         queryset = CourseEnrollment.objects
         if annotations:
             queryset = queryset.annotate(**annotations)
-        queryset = queryset.filter(*query_args)
+        queryset = use_read_replica_if_available(queryset.filter(*query_args))
 
         cache_key = 'usercount.%s' % queryset.query
         user_count = cache.get(cache_key, None)
