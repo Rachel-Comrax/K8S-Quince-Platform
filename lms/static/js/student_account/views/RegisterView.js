@@ -465,9 +465,11 @@
             },
 
             saveSuccess: function() {
+                if (window !== parent)
+                    parent.postMessage("register success", "*");
                 this('auth-complete');
             },
-
+            
             saveError: function(error) {
                 $(this.el).show(); // Show in case the form was hidden for auto-submission
                 this.errors = _.flatten(
